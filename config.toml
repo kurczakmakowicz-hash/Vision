@@ -9,4 +9,4 @@ ptt_key = "space"             # hold this key to talk (the `/voice` command)
 input_device = ""             # "" = system default microphone
 output_device = ""            # "" = system default speaker
 stt_language = "en-US"
-tts_voice_id = ""             # your chosen ElevenLabs voice id ("" = adapter default)
+tts_voice_id = "sB7vwSCyX0tQmU24cW2C"   # your chosen ElevenLabs voice

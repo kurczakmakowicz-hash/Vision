@@ -4,6 +4,10 @@
 # Runtime state
 var/
 
+# Personal long-term memory (the user's facts) — anchored so it won't match
+# the vision/memory/ source package.
+/memory/
+
 # Python
 __pycache__/
 *.py[cod]

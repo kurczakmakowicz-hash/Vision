@@ -12,7 +12,8 @@ import os
 from dotenv import load_dotenv
 
 from vision.config import load_config
-from vision.core.conversation import Conversation
+from vision.core.conversation import Conversation, system_prompt_with_facts
+from vision.memory.store import FactStore
 from vision.seams.provider.anthropic import AnthropicProvider
 from vision.tools.registry import discover_tools
 from vision.ui import repl
@@ -30,6 +31,11 @@ async def main() -> None:
 
     provider = AnthropicProvider(model=config.model, effort=config.effort)
     registry = discover_tools()
-    conversation = Conversation(origin="text")
+
+    # Walk into every conversation already knowing the durable facts.
+    facts_block = FactStore().facts_block()
+    conversation = Conversation(
+        system_text=system_prompt_with_facts(facts_block), origin="text"
+    )
 
     await repl.run(conversation, provider, registry, config)

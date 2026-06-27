@@ -24,6 +24,13 @@ def default_system_prompt() -> str:
     return PERSONA
 
 
+def system_prompt_with_facts(facts_block: str = "") -> str:
+    """Persona plus the durable-facts block (Tier 4). Facts are appended *after*
+    the persona so they read as reference data, not as part of the instructions."""
+    base = default_system_prompt()
+    return f"{base}\n\n{facts_block}" if facts_block.strip() else base
+
+
 class Conversation:
     """In-memory history for one session, plus the system prompt.
 
