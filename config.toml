@@ -22,3 +22,16 @@ quiet_hours = { start = "22:00", end = "07:00" }
 name = "trigger_watch"
 interval_seconds = 5
 handler = "watch_trigger"
+
+[rails]
+# The "never without asking" list — these always stop for a yes before running.
+consequential_tools = [
+    "send_email", "send_message", "send_social_post", "spend_money",
+    "delete_reminder", "edit_file", "forget_fact",
+]
+kill_switch = false           # /kill engages, /resume releases (persisted)
+
+[cost]
+input_per_mtok = 5.0          # claude-opus-4-8 pricing, for the running tally
+output_per_mtok = 25.0
+budget_warn_usd = 5.0

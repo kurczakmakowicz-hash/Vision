@@ -28,6 +28,10 @@ async def start_voice(
     provider: Provider,
     registry: Registry | None,
     config: Config,
+    *,
+    gate=None,
+    audit=None,
+    cost=None,
 ) -> None:
     missing = _missing_deps()
     if missing:
@@ -63,6 +67,9 @@ async def start_voice(
         input_device=vc.input_device or None,
         on_transcript=lambda t: print(f"\n[you said] {t}"),
         on_text=lambda d: print(d, end="", flush=True),
+        gate=gate,
+        audit=audit,
+        cost=cost,
     )
 
     try:

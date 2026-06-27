@@ -35,6 +35,9 @@ class VoiceSession:
         input_device: str | int | None = None,
         on_transcript: Callable[[str], None] | None = None,
         on_text: Callable[[str], None] | None = None,
+        gate: Any | None = None,
+        audit: Any | None = None,
+        cost: Any | None = None,
     ) -> None:
         self.conversation = conversation
         self.provider = provider
@@ -46,6 +49,9 @@ class VoiceSession:
         self.input_device = input_device
         self._on_transcript = on_transcript or (lambda t: None)
         self._on_text = on_text or (lambda d: None)
+        self._gate = gate
+        self._audit = audit
+        self._cost = cost
 
         self._speak_task: asyncio.Task | None = None
         self._utterance_task: asyncio.Task | None = None
@@ -72,7 +78,8 @@ class VoiceSession:
         self._speak_task = asyncio.create_task(self._speak(text_q))
         try:
             final = await run_turn(
-                self.conversation, self.provider, on_text=on_text, registry=self.registry
+                self.conversation, self.provider, on_text=on_text,
+                registry=self.registry, gate=self._gate, audit=self._audit, cost=self._cost,
             )
         finally:
             text_q.put_nowait(None)  # end the speech stream

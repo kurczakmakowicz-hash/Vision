@@ -51,6 +51,33 @@ class HeartbeatConfig(BaseModel):
     checks: list[CheckConfig] = Field(default_factory=list)
 
 
+class RailsConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    # Tools that always require confirmation, by name — the "never without asking"
+    # list. (Tools may also self-flag via requires_confirmation.)
+    consequential_tools: list[str] = Field(
+        default_factory=lambda: [
+            "send_email",
+            "send_message",
+            "send_social_post",
+            "spend_money",
+            "delete_reminder",
+            "edit_file",
+            "forget_fact",
+        ]
+    )
+    kill_switch: bool = False  # initial state; persisted thereafter
+
+
+class CostConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    input_per_mtok: float = 5.0    # claude-opus-4-8 pricing
+    output_per_mtok: float = 25.0
+    budget_warn_usd: float = 5.0
+
+
 class Config(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -58,6 +85,8 @@ class Config(BaseModel):
     effort: Effort = "high"
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
     heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
+    rails: RailsConfig = Field(default_factory=RailsConfig)
+    cost: CostConfig = Field(default_factory=CostConfig)
 
 
 def load_config(path: str | Path = "config.toml") -> Config:

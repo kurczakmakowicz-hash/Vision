@@ -20,6 +20,10 @@ from vision.heartbeat.quiet import is_quiet
 from vision.heartbeat.sink import ConsoleSink
 from vision.heartbeat.state import HeartbeatState
 from vision.memory.store import FactStore
+from vision.rails.audit import AuditLog
+from vision.rails.cost import CostTally
+from vision.rails.gate import ConsoleAsker, Gate
+from vision.rails.killswitch import KillSwitch
 from vision.seams.provider.anthropic import AnthropicProvider
 from vision.tools.registry import discover_tools
 from vision.ui import repl
@@ -44,6 +48,20 @@ async def main() -> None:
         system_text=system_prompt_with_facts(facts_block), origin="text"
     )
 
+    # The rails: gate, audit trail, cost tally, kill switch.
+    audit = AuditLog()
+    cost = CostTally(
+        config.cost.input_per_mtok,
+        config.cost.output_per_mtok,
+        config.cost.budget_warn_usd,
+    )
+    gate = Gate(
+        config.rails.consequential_tools,
+        ConsoleAsker(),
+        timeout=config.heartbeat.confirm_timeout_seconds,
+    )
+    kill = KillSwitch(default=config.rails.kill_switch)
+
     # The heartbeat runs as a separate task on this same loop (relocatable later).
     hb_state = HeartbeatState()
     sink = ConsoleSink()
@@ -54,12 +72,16 @@ async def main() -> None:
         sink,
         interval_seconds=config.heartbeat.interval_seconds,
         is_quiet=lambda now: is_quiet(qh.start, qh.end, now),
+        is_paused=lambda: kill.engaged,  # the kill switch halts proactive behavior
     )
     stop = asyncio.Event()
     hb_task = asyncio.create_task(heartbeat.run(stop))
 
     try:
-        await repl.run(conversation, provider, registry, config, hb_state, sink)
+        await repl.run(
+            conversation, provider, registry, config, hb_state, sink,
+            gate=gate, audit=audit, cost=cost, killswitch=kill,
+        )
     finally:
         stop.set()
         await hb_task

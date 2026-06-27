@@ -34,6 +34,11 @@ async def run(
     config: Config | None = None,
     heartbeat_state: Any | None = None,
     sink: Any | None = None,
+    *,
+    gate: Any | None = None,
+    audit: Any | None = None,
+    cost: Any | None = None,
+    killswitch: Any | None = None,
 ) -> None:
     loop = asyncio.get_running_loop()
     print(
@@ -63,7 +68,10 @@ async def run(
         if text.lower() == "/voice":
             from vision.voice.launch import start_voice
 
-            await start_voice(conversation, provider, registry, config or Config())
+            await start_voice(
+                conversation, provider, registry, config or Config(),
+                gate=gate, audit=audit, cost=cost,
+            )
             continue
         if text.lower() == "/notices":
             _show_notices(heartbeat_state)
@@ -71,19 +79,31 @@ async def run(
         if text.lower().startswith("/dismiss"):
             _dismiss(heartbeat_state, text)
             continue
+        if text.lower() == "/kill":
+            _toggle_kill(killswitch, engage=True)
+            continue
+        if text.lower() == "/resume":
+            _toggle_kill(killswitch, engage=False)
+            continue
+        if text.lower() == "/cost":
+            _show_cost(cost)
+            continue
 
         conversation.append_user_text(user_input)
 
         print("vision › ", end="", flush=True)
         try:
             await run_turn(
-                conversation, provider, on_text=_print_delta, registry=registry
+                conversation, provider, on_text=_print_delta,
+                registry=registry, gate=gate, audit=audit, cost=cost,
             )
         except ProviderUnavailable as exc:
             # Drop the half-written prompt line and explain, but keep going.
             print(f"\n[vision couldn't reach the model: {exc}. Try again.]")
             continue
         print()  # newline after the streamed reply
+        if cost is not None and cost.should_warn():
+            print(f"[vision 💸 cost warning: ${cost.total_usd:.2f} so far this run]")
 
 
 def _print_delta(delta: str) -> None:
@@ -108,3 +128,23 @@ def _dismiss(state: Any | None, text: str) -> None:
         print("Usage: /dismiss <id>")
         return
     print(f"Dismissed {parts[1]}." if state.dismiss(parts[1]) else f"No notice with id {parts[1]}.")
+
+
+def _toggle_kill(killswitch: Any | None, *, engage: bool) -> None:
+    if killswitch is None:
+        print("[no kill switch]")
+        return
+    if engage:
+        killswitch.engage()
+        print("Kill switch ENGAGED — proactive behavior is paused. Chat still works.")
+    else:
+        killswitch.release()
+        print("Kill switch released — proactive behavior resumed.")
+
+
+def _show_cost(cost: Any | None) -> None:
+    if cost is None:
+        print("[no cost tally]")
+        return
+    s = cost.snapshot()
+    print(f"Model cost so far: ${s.total_usd:.4f}  ({s.input_tokens} in / {s.output_tokens} out tokens)")

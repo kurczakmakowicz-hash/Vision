@@ -22,6 +22,8 @@ from typing import Any, Callable
 from pydantic import ValidationError
 
 from vision.core.conversation import Conversation
+from vision.rails.injection import scan as scan_injection
+from vision.rails.injection import wrap_external_content
 from vision.seams.provider.base import FinalMessage, Provider, ToolUse
 from vision.tools.registry import Registry, ToolSpec
 
@@ -81,14 +83,14 @@ async def _run_one_tool(
     except ValidationError as exc:
         return _error_result(tu.id, _friendly_validation(spec, exc))
 
-    # 2. THE GATE — between tool-choice and tool-execution. Wired in Tier 6; until
-    #    then ``gate`` is None and this is a pass-through.
-    if gate is not None and spec.requires_confirmation:
+    # 2. THE GATE — between tool-choice and tool-execution. Fires for any tool the
+    #    gate deems consequential (self-flagged or on the configured list).
+    if gate is not None and gate.requires(spec):
         decision = await gate.confirm(spec, args, origin=conversation.origin)
         if audit is not None:
             audit.confirmation(spec.name, args, decision)
         if not getattr(decision, "allowed", False):
-            return _error_result(tu.id, "The user declined this action.")
+            return _error_result(tu.id, f"Not done — {decision.reason or 'declined'}.")
 
     # 3. Execute. Any failure becomes an error result — never an exception out.
     try:
@@ -104,7 +106,14 @@ async def _run_one_tool(
     if audit is not None:
         audit.tool_run(spec.name, args, output, is_error=is_error)
 
-    # 4. (Tier 6) external-content tools get an injection scan here.
+    # 4. Treat outside-world content as DATA: flag injected instructions and wrap
+    #    the result so the model reports it instead of obeying it.
+    if spec.external_content and not is_error:
+        flags = scan_injection(output)
+        if flags:
+            if audit is not None:
+                audit.injection(spec.name, flags)
+            output = wrap_external_content(output, flags)
 
     return _error_result(tu.id, output) if is_error else _result_block(tu.id, output)
 
