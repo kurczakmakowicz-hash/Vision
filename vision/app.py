@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from vision.config import load_config
 from vision.core.conversation import Conversation
 from vision.seams.provider.anthropic import AnthropicProvider
+from vision.tools.registry import discover_tools
 from vision.ui import repl
 
 
@@ -28,6 +29,7 @@ async def main() -> None:
         )
 
     provider = AnthropicProvider(model=config.model, effort=config.effort)
+    registry = discover_tools()
     conversation = Conversation(origin="text")
 
-    await repl.run(conversation, provider)
+    await repl.run(conversation, provider, registry)

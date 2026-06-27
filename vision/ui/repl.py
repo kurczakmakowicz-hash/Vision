@@ -13,6 +13,7 @@ from vision.core.agent import run_turn
 from vision.core.conversation import Conversation
 from vision.core.errors import ProviderUnavailable
 from vision.seams.provider.base import Provider
+from vision.tools.registry import Registry
 
 _QUIT = {"/quit", "/exit", "/q"}
 _PROMPT = "you › "
@@ -23,7 +24,11 @@ async def _read_line(loop: asyncio.AbstractEventLoop) -> str:
     return await loop.run_in_executor(None, input, _PROMPT)
 
 
-async def run(conversation: Conversation, provider: Provider) -> None:
+async def run(
+    conversation: Conversation,
+    provider: Provider,
+    registry: Registry | None = None,
+) -> None:
     loop = asyncio.get_running_loop()
     print("Vision is listening. Type a message, or /quit to leave.\n")
 
@@ -45,7 +50,9 @@ async def run(conversation: Conversation, provider: Provider) -> None:
 
         print("vision › ", end="", flush=True)
         try:
-            await run_turn(conversation, provider, on_text=_print_delta)
+            await run_turn(
+                conversation, provider, on_text=_print_delta, registry=registry
+            )
         except ProviderUnavailable as exc:
             # Drop the half-written prompt line and explain, but keep going.
             print(f"\n[vision couldn't reach the model: {exc}. Try again.]")
