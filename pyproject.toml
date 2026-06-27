@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vision-assistant"
+version = "0.1.0"
+description = "Vision — a voice-first AI assistant harness"
+requires-python = ">=3.11"
+dependencies = [
+    # Tier 1 — the brain
+    "anthropic>=0.40",
+    "python-dotenv>=1.0",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+# Tier 3 — voice. Installed when you reach that tier.
+voice = [
+    "sounddevice>=0.4",
+    "numpy>=1.26",
+    "deepgram-sdk>=3.0",
+    "elevenlabs>=1.0",
+    "pynput>=1.7",
+]
+# Tier 6 — config writes (kill-switch toggle, etc.)
+rails = [
+    "tomli-w>=1.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+vision = "vision.__main__:main_sync"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vision"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

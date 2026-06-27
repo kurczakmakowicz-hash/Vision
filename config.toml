@@ -1,0 +1,5 @@
+# Vision configuration — hand-editable. Later tiers add [voice], [heartbeat],
+# [rails], and [cost] sections; for Tier 1 only the model + effort matter.
+
+model = "claude-opus-4-8"
+effort = "high"               # low | medium | high | xhigh | max
