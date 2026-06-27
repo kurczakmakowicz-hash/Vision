@@ -3,3 +3,10 @@
 
 model = "claude-opus-4-8"
 effort = "high"               # low | medium | high | xhigh | max
+
+[voice]
+ptt_key = "space"             # hold this key to talk (the `/voice` command)
+input_device = ""             # "" = system default microphone
+output_device = ""            # "" = system default speaker
+stt_language = "en-US"
+tts_voice_id = ""             # your chosen ElevenLabs voice id ("" = adapter default)

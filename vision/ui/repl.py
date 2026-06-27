@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
+from vision.config import Config
 from vision.core.agent import run_turn
 from vision.core.conversation import Conversation
 from vision.core.errors import ProviderUnavailable
@@ -28,9 +29,10 @@ async def run(
     conversation: Conversation,
     provider: Provider,
     registry: Registry | None = None,
+    config: Config | None = None,
 ) -> None:
     loop = asyncio.get_running_loop()
-    print("Vision is listening. Type a message, or /quit to leave.\n")
+    print("Vision is listening. Type a message, /voice to talk, or /quit to leave.\n")
 
     while True:
         try:
@@ -45,6 +47,11 @@ async def run(
         if text.lower() in _QUIT:
             print("Goodbye.")
             return
+        if text.lower() == "/voice":
+            from vision.voice.launch import start_voice
+
+            await start_voice(conversation, provider, registry, config or Config())
+            continue
 
         conversation.append_user_text(user_input)
 

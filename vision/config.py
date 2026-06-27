@@ -12,9 +12,19 @@ import tomllib
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
+
+
+class VoiceConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    ptt_key: str = "space"          # hold-to-talk key
+    input_device: str = ""          # "" = system default microphone
+    output_device: str = ""         # "" = system default speaker
+    stt_language: str = "en-US"
+    tts_voice_id: str = ""          # chosen at Tier 3; empty = adapter default
 
 
 class Config(BaseModel):
@@ -22,6 +32,7 @@ class Config(BaseModel):
 
     model: str = "claude-opus-4-8"
     effort: Effort = "high"
+    voice: VoiceConfig = Field(default_factory=VoiceConfig)
 
 
 def load_config(path: str | Path = "config.toml") -> Config:

@@ -32,4 +32,4 @@ async def main() -> None:
     registry = discover_tools()
     conversation = Conversation(origin="text")
 
-    await repl.run(conversation, provider, registry)
+    await repl.run(conversation, provider, registry, config)
