@@ -75,6 +75,20 @@ Swap the model/STT/TTS backend = one file implementing a `Protocol` in
   are flagged to you, never obeyed.
 - A plain audit log (`var/audit.log`), a cost tally, and a kill switch.
 
+## Delegate coding to Claude Code
+
+Vision can hand a real coding job to [Claude Code](https://claude.com/claude-code)
+as a specialist sub-agent — *"have Claude Code add a dark-mode toggle to my app at
+~/projects/site"*. It edits files in that folder and reports back. Because it
+changes your code, it's **gated** — Vision states the task and waits for your yes.
+
+- Install the CLI once: `curl -fsSL https://claude.ai/install.sh | bash` (then
+  check `claude --version`).
+- No separate login needed — it reuses the `ANTHROPIC_API_KEY` from your `.env`.
+- Each handoff is a real Claude Code session, so it costs more than a chat turn;
+  the cost is shown in Vision's reply. Tune autonomy in `config.toml` →
+  `[claude_code]` (`acceptEdits` vs `bypassPermissions`).
+
 ## Test
 
 ```bash

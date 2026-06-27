@@ -78,6 +78,16 @@ class CostConfig(BaseModel):
     budget_warn_usd: float = 5.0
 
 
+class ClaudeCodeConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    # acceptEdits = let it edit files (safe default); bypassPermissions = full
+    # autonomy incl. running commands; default = ask (won't work unattended).
+    permission_mode: str = "acceptEdits"
+    max_turns: int = 30
+    timeout_seconds: int = 600
+
+
 class Config(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -87,6 +97,7 @@ class Config(BaseModel):
     heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
     rails: RailsConfig = Field(default_factory=RailsConfig)
     cost: CostConfig = Field(default_factory=CostConfig)
+    claude_code: ClaudeCodeConfig = Field(default_factory=ClaudeCodeConfig)
 
 
 def load_config(path: str | Path = "config.toml") -> Config:
