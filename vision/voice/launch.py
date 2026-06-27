@@ -14,7 +14,7 @@ from vision.core.conversation import Conversation
 from vision.seams.provider.base import Provider
 from vision.tools.registry import Registry
 
-_VOICE_DEPS = ("sounddevice", "numpy", "deepgram", "elevenlabs", "pynput")
+_VOICE_DEPS = ("sounddevice", "numpy", "elevenlabs", "pynput")
 
 
 def _missing_deps() -> list[str]:

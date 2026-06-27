@@ -19,9 +19,9 @@ dependencies = [
 voice = [
     "sounddevice>=0.4",
     "numpy>=1.26",
-    "deepgram-sdk>=3.0",
     "elevenlabs>=1.0",
     "pynput>=1.7",
+    # Deepgram STT uses plain HTTP via httpx (a core dependency) — no SDK needed.
 ]
 # Tier 6 — config writes (kill-switch toggle, etc.)
 rails = [

@@ -1,20 +1,22 @@
-"""Deepgram implementation of the STT seam (streaming websocket).
+"""Deepgram implementation of the STT seam — prerecorded REST endpoint.
 
-Targets ``deepgram-sdk`` v3 async live transcription. The SDK is event-callback
-based, so we bridge its callbacks to our async-iterator contract via a queue.
-Lazily imported — the package imports fine without the ``voice`` extra. Needs
-``DEEPGRAM_API_KEY``. Live behavior requires a key + audio, so it isn't unit
--tested here; the seam keeps it swappable.
+For push-to-talk we capture the whole clip while the key is held, then send it
+once to Deepgram and get the transcript back. That's simpler and more robust than
+a streaming websocket for PTT, and — by using plain HTTP via httpx (already a
+dependency) instead of the deepgram SDK — it's immune to the SDK's frequent major
+rewrites. Needs ``DEEPGRAM_API_KEY``. Lazily imports nothing vendor-specific.
 """
 
 from __future__ import annotations
 
-import asyncio
 import os
 from typing import AsyncIterator
 
+import httpx
+
 from vision.seams.stt.base import Transcript
 
+_ENDPOINT = "https://api.deepgram.com/v1/listen"
 _SAMPLE_RATE = 16_000
 
 
@@ -30,44 +32,36 @@ class DeepgramSTT:
         self._model = model
 
     async def transcribe(self, frames: AsyncIterator[bytes]) -> AsyncIterator[Transcript]:
-        from deepgram import DeepgramClient, LiveOptions, LiveTranscriptionEvents
+        # PTT: drain the whole held-key clip, then transcribe it in one request.
+        audio = bytearray()
+        async for frame in frames:
+            audio += frame
+        if not audio:
+            return
 
-        dg = DeepgramClient(self._api_key)
-        connection = dg.listen.asyncwebsocket.v("1")
-        queue: asyncio.Queue[Transcript | None] = asyncio.Queue()
-
-        async def on_transcript(_client, result, **_kw):
-            alt = result.channel.alternatives[0]
-            if alt.transcript:
-                await queue.put(Transcript(text=alt.transcript, is_final=result.is_final))
-
-        async def on_close(_client, *_a, **_k):
-            await queue.put(None)
-
-        connection.on(LiveTranscriptionEvents.Transcript, on_transcript)
-        connection.on(LiveTranscriptionEvents.Close, on_close)
-
-        await connection.start(
-            LiveOptions(
-                model=self._model,
-                language=self._language,
-                encoding="linear16",
-                sample_rate=_SAMPLE_RATE,
-                channels=1,
+        params = {
+            "model": self._model,
+            "language": self._language,
+            "encoding": "linear16",      # raw PCM16 from the mic
+            "sample_rate": str(_SAMPLE_RATE),
+            "channels": "1",
+            "punctuate": "true",
+            "smart_format": "true",
+        }
+        headers = {
+            "Authorization": f"Token {self._api_key}",
+            "Content-Type": "application/octet-stream",
+        }
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                _ENDPOINT, params=params, headers=headers, content=bytes(audio)
             )
-        )
+            resp.raise_for_status()
+            data = resp.json()
 
-        async def pump() -> None:
-            async for frame in frames:
-                await connection.send(frame)
-            await connection.finish()
-
-        pump_task = asyncio.create_task(pump())
         try:
-            while True:
-                item = await queue.get()
-                if item is None:
-                    break
-                yield item
-        finally:
-            pump_task.cancel()
+            transcript = data["results"]["channels"][0]["alternatives"][0]["transcript"]
+        except (KeyError, IndexError, TypeError):
+            transcript = ""
+        if transcript.strip():
+            yield Transcript(text=transcript, is_final=True)
