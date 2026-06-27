@@ -75,6 +75,7 @@ async def delegate_coding_task(args: DelegateCodingTaskInput) -> str:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             cwd=str(project),
+            stdin=asyncio.subprocess.DEVNULL,  # headless: don't wait on stdin
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

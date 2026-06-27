@@ -38,8 +38,9 @@ budget_warn_usd = 5.0
 
 [claude_code]
 # How much autonomy the delegated Claude Code agent gets:
-#   acceptEdits      = it can edit files (safe default)
-#   bypassPermissions = full autonomy, incl. running commands/tests
-permission_mode = "acceptEdits"
+#   acceptEdits      = it can edit files only
+#   bypassPermissions = full autonomy, incl. running commands/tests (approve once,
+#                       then it does the whole job without asking again)
+permission_mode = "bypassPermissions"
 max_turns = 30
 timeout_seconds = 600
