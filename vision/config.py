@@ -27,12 +27,37 @@ class VoiceConfig(BaseModel):
     tts_voice_id: str = ""          # chosen at Tier 3; empty = adapter default
 
 
+class QuietHours(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    start: str = "22:00"   # HH:MM local; non-urgent surfacing waits until `end`
+    end: str = "07:00"
+
+
+class CheckConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    name: str
+    interval_seconds: int = 300
+    handler: str          # resolved to a registered check handler by name
+
+
+class HeartbeatConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    interval_seconds: int = 60          # how often the loop ticks
+    confirm_timeout_seconds: int = 120  # heartbeat confirmations time out → deny
+    quiet_hours: QuietHours = Field(default_factory=QuietHours)
+    checks: list[CheckConfig] = Field(default_factory=list)
+
+
 class Config(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     model: str = "claude-opus-4-8"
     effort: Effort = "high"
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
+    heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
 
 
 def load_config(path: str | Path = "config.toml") -> Config:

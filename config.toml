@@ -10,3 +10,15 @@ input_device = ""             # "" = system default microphone
 output_device = ""            # "" = system default speaker
 stt_language = "en-US"
 tts_voice_id = "sB7vwSCyX0tQmU24cW2C"   # your chosen ElevenLabs voice
+
+[heartbeat]
+interval_seconds = 5                  # how often the loop ticks
+confirm_timeout_seconds = 120         # heartbeat confirmations time out -> deny
+quiet_hours = { start = "22:00", end = "07:00" }
+
+# Each check is its own small unit. To try it: `echo "ping" > var/trigger`, and
+# the next tick surfaces "ping". Quiet by default — most checks say nothing.
+[[heartbeat.checks]]
+name = "trigger_watch"
+interval_seconds = 5
+handler = "watch_trigger"

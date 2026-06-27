@@ -7,12 +7,18 @@ way in/out — without changing the brain.
 
 from __future__ import annotations
 
+import asyncio
 import os
 
 from dotenv import load_dotenv
 
 from vision.config import load_config
 from vision.core.conversation import Conversation, system_prompt_with_facts
+from vision.heartbeat.checks import build_checks
+from vision.heartbeat.loop import HeartbeatLoop
+from vision.heartbeat.quiet import is_quiet
+from vision.heartbeat.sink import ConsoleSink
+from vision.heartbeat.state import HeartbeatState
 from vision.memory.store import FactStore
 from vision.seams.provider.anthropic import AnthropicProvider
 from vision.tools.registry import discover_tools
@@ -38,4 +44,22 @@ async def main() -> None:
         system_text=system_prompt_with_facts(facts_block), origin="text"
     )
 
-    await repl.run(conversation, provider, registry, config)
+    # The heartbeat runs as a separate task on this same loop (relocatable later).
+    hb_state = HeartbeatState()
+    sink = ConsoleSink()
+    qh = config.heartbeat.quiet_hours
+    heartbeat = HeartbeatLoop(
+        build_checks(config.heartbeat.checks),
+        hb_state,
+        sink,
+        interval_seconds=config.heartbeat.interval_seconds,
+        is_quiet=lambda now: is_quiet(qh.start, qh.end, now),
+    )
+    stop = asyncio.Event()
+    hb_task = asyncio.create_task(heartbeat.run(stop))
+
+    try:
+        await repl.run(conversation, provider, registry, config, hb_state, sink)
+    finally:
+        stop.set()
+        await hb_task

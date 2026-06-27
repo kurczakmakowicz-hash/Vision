@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 
+from typing import Any
+
 from vision.config import Config
 from vision.core.agent import run_turn
 from vision.core.conversation import Conversation
@@ -30,9 +32,20 @@ async def run(
     provider: Provider,
     registry: Registry | None = None,
     config: Config | None = None,
+    heartbeat_state: Any | None = None,
+    sink: Any | None = None,
 ) -> None:
     loop = asyncio.get_running_loop()
-    print("Vision is listening. Type a message, /voice to talk, or /quit to leave.\n")
+    print(
+        "Vision is listening. Type a message, /voice to talk, /notices to see what "
+        "came up, or /quit to leave.\n"
+    )
+
+    # Catch up on anything surfaced while the interface was closed.
+    if heartbeat_state is not None and sink is not None:
+        for item in heartbeat_state.undelivered():
+            sink.deliver(item)
+            heartbeat_state.mark_delivered(item["id"])
 
     while True:
         try:
@@ -52,6 +65,12 @@ async def run(
 
             await start_voice(conversation, provider, registry, config or Config())
             continue
+        if text.lower() == "/notices":
+            _show_notices(heartbeat_state)
+            continue
+        if text.lower().startswith("/dismiss"):
+            _dismiss(heartbeat_state, text)
+            continue
 
         conversation.append_user_text(user_input)
 
@@ -69,3 +88,23 @@ async def run(
 
 def _print_delta(delta: str) -> None:
     print(delta, end="", flush=True)
+
+
+def _show_notices(state: Any | None) -> None:
+    if state is None:
+        print("[no heartbeat running]")
+        return
+    items = state.held()
+    if not items:
+        print("No notices.")
+        return
+    for h in items:
+        print(f"  {h['id']}  [{h['level']}]  {h['summary']}")
+
+
+def _dismiss(state: Any | None, text: str) -> None:
+    parts = text.split()
+    if state is None or len(parts) < 2:
+        print("Usage: /dismiss <id>")
+        return
+    print(f"Dismissed {parts[1]}." if state.dismiss(parts[1]) else f"No notice with id {parts[1]}.")
